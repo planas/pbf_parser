@@ -653,7 +653,7 @@ static VALUE seek_to_osm_data(VALUE obj, VALUE index)
 static VALUE iterate(VALUE obj)
 {
   if (!rb_block_given_p())
-    rb_raise(rb_eArgError, "A block is expected");
+    return rb_funcall(obj, rb_intern("to_enum"), 0);
 
   do
   {
