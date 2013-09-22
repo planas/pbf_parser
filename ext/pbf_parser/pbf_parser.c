@@ -624,6 +624,32 @@ static VALUE relations_getter(VALUE obj)
   return rb_hash_aref(data, STR2SYM("relations"));
 }
 
+static VALUE blobs_getter(VALUE obj)
+{
+  return rb_iv_get(obj, "@blobs");
+}
+
+static VALUE size_getter(VALUE obj)
+{
+  VALUE blobs = rb_iv_get(obj, "@blobs");
+  return rb_funcall(blobs, rb_intern("size"), 0);
+}
+
+static VALUE seek_to_osm_data(VALUE obj, VALUE index)
+{
+  FILE *input = DATA_PTR(obj);
+  VALUE blobs = blobs_getter(obj);
+  VALUE blob_info = rb_ary_entry(blobs, NUM2LONG(index));
+  if (!RTEST(blob_info)) {
+    return Qfalse;
+  }
+  long pos = NUM2LONG(rb_hash_aref(blob_info, STR2SYM("header_pos"))) - 4;
+  if (0 != fseek(input, pos, SEEK_SET)) {
+    return Qfalse;
+  }
+  return parse_osm_data(obj);
+}
+
 static VALUE iterate(VALUE obj)
 {
   if (!rb_block_given_p())
@@ -637,9 +663,66 @@ static VALUE iterate(VALUE obj)
 
     rb_yield_values(3, nodes, ways, relations);
 
-  } while(parse_osm_data(obj) != Qfalse);
+  } while(RTEST(parse_osm_data(obj)));
 
   return Qnil;
+}
+
+static VALUE find_all_blobs(VALUE obj)
+{
+  FILE *input = DATA_PTR(obj);
+  long old_pos = ftell(input);
+
+  if (0 != fseek(input, 0, SEEK_SET)) {
+    return Qfalse;
+  }
+
+  BlobHeader *header;
+
+  VALUE blobs = rb_ary_new();
+  rb_iv_set(obj, "@blobs", blobs);
+
+  long pos = 0, data_pos = 0;
+  int32_t datasize;
+
+  while ((header = read_blob_header(input)) != NULL) {
+
+    datasize = header->datasize;
+
+    if (0 == strcmp(header->type, "OSMData")) {
+      VALUE blob_info = rb_hash_new();
+      data_pos = ftell(input);
+
+      // This is designed to be user-friendly, so I have chosen
+      // to make header_pos the position of the protobuf stream
+      // itself, in line with data_pos. However, internally, we
+      // subtract 4 when calling parse_osm_data().
+      rb_hash_aset(blob_info, STR2SYM("header_pos"),
+		   LONG2NUM(pos + 4));
+      rb_hash_aset(blob_info, STR2SYM("header_size"),
+		   LONG2NUM(data_pos - pos - 4));
+      rb_hash_aset(blob_info, STR2SYM("data_pos"),
+		   LONG2NUM(data_pos));
+      rb_hash_aset(blob_info, STR2SYM("data_size"),
+		   UINT2NUM(datasize));
+
+      rb_ary_push(blobs, blob_info);
+    }
+
+    blob_header__free_unpacked(header, NULL);
+
+    if (0 != fseek(input, datasize, SEEK_CUR)) {
+      break; // cut losses
+    }
+    pos = ftell(input);
+  }
+
+  // restore old position
+  if (0 != fseek(input, old_pos, SEEK_SET)) {
+    return Qfalse;
+  }
+
+  return Qtrue;
 }
 
 static VALUE initialize(VALUE obj, VALUE filename)
@@ -665,6 +748,9 @@ static VALUE initialize(VALUE obj, VALUE filename)
   // Parse the firts OSMData fileblock
   parse_osm_data(obj);
 
+  // Find position and size of all data blobs in the file
+  find_all_blobs(obj);
+
   return obj;
 }
 
@@ -689,6 +775,7 @@ void Init_pbf_parser(void)
   rb_define_method(klass, "initialize", initialize, 1);
   rb_define_method(klass, "inspect", inspect, 0);
   rb_define_method(klass, "next", parse_osm_data, 0);
+  rb_define_method(klass, "seek", seek_to_osm_data, 1);
   rb_define_method(klass, "each", iterate, 0);
 
   // Getters
@@ -697,4 +784,6 @@ void Init_pbf_parser(void)
   rb_define_method(klass, "nodes", nodes_getter, 0);
   rb_define_method(klass, "ways", ways_getter, 0);
   rb_define_method(klass, "relations", relations_getter, 0);
+  rb_define_method(klass, "blobs", blobs_getter, 0);
+  rb_define_method(klass, "size", size_getter, 0);
 }
