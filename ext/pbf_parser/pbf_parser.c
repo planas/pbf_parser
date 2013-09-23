@@ -590,6 +590,9 @@ static VALUE parse_osm_data(VALUE obj)
 
   primitive_block__free_unpacked(primitive_block, NULL);
 
+  // Increment position
+  rb_iv_set(obj, "@pos", INT2NUM(NUM2INT(rb_iv_get(obj, "@pos")) + 1));
+
   return Qtrue;
 }
 
@@ -635,11 +638,17 @@ static VALUE size_getter(VALUE obj)
   return rb_funcall(blobs, rb_intern("size"), 0);
 }
 
+static VALUE pos_getter(VALUE obj)
+{
+  return rb_iv_get(obj, "@pos");
+}
+
 static VALUE seek_to_osm_data(VALUE obj, VALUE index)
 {
   FILE *input = DATA_PTR(obj);
   VALUE blobs = blobs_getter(obj);
-  VALUE blob_info = rb_ary_entry(blobs, NUM2LONG(index));
+  int index_raw = NUM2INT(index);
+  VALUE blob_info = rb_ary_entry(blobs, index_raw);
   if (!RTEST(blob_info)) {
     return Qfalse;
   }
@@ -647,6 +656,10 @@ static VALUE seek_to_osm_data(VALUE obj, VALUE index)
   if (0 != fseek(input, pos, SEEK_SET)) {
     return Qfalse;
   }
+  
+  // Set position - incremented by parse_osm_data
+  rb_iv_set(obj, "@pos", INT2NUM(index_raw - 1));
+
   return parse_osm_data(obj);
 }
 
@@ -741,6 +754,9 @@ static VALUE initialize(VALUE obj, VALUE filename)
   // Store the filename
   rb_iv_set(obj, "@filename", filename);
 
+  // Set initial position - incremented by parse_osm_data
+  rb_iv_set(obj, "@pos", INT2NUM(-1));
+
   // Every osm.pbf file must have an OSMHeader at the beginning.
   // Failing to find it means that the file is corrupt or invalid.
   parse_osm_header(obj, DATA_PTR(obj));
@@ -776,6 +792,7 @@ void Init_pbf_parser(void)
   rb_define_method(klass, "inspect", inspect, 0);
   rb_define_method(klass, "next", parse_osm_data, 0);
   rb_define_method(klass, "seek", seek_to_osm_data, 1);
+  rb_define_method(klass, "pos=", seek_to_osm_data, 1);
   rb_define_method(klass, "each", iterate, 0);
 
   // Getters
@@ -786,4 +803,5 @@ void Init_pbf_parser(void)
   rb_define_method(klass, "relations", relations_getter, 0);
   rb_define_method(klass, "blobs", blobs_getter, 0);
   rb_define_method(klass, "size", size_getter, 0);
+  rb_define_method(klass, "pos", pos_getter, 0);
 }
