@@ -648,13 +648,16 @@ static VALUE seek_to_osm_data(VALUE obj, VALUE index)
   FILE *input = DATA_PTR(obj);
   VALUE blobs = blobs_getter(obj);
   int index_raw = NUM2INT(index);
+  if (NUM2INT(rb_iv_get(obj, "@pos")) == index_raw) {
+    return Qtrue; // already there
+  }
   VALUE blob_info = rb_ary_entry(blobs, index_raw);
   if (!RTEST(blob_info)) {
-    return Qfalse;
+    return Qfalse; // no such blob entry
   }
   long pos = NUM2LONG(rb_hash_aref(blob_info, STR2SYM("header_pos"))) - 4;
   if (0 != fseek(input, pos, SEEK_SET)) {
-    return Qfalse;
+    return Qfalse; // failed to seek to file pos
   }
   
   // Set position - incremented by parse_osm_data
