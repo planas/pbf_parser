@@ -123,7 +123,7 @@ Array index:
 => 379
 ```
 
-If the seek fails for any reason, it returns false (TODO: make this throw exception?):
+If the index to #seek is out of bounds, it returns false:
 
 ```ruby
 > pbf.seek(380)

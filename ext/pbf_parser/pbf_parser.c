@@ -667,7 +667,7 @@ static VALUE seek_to_osm_data(VALUE obj, VALUE index)
   }
   long pos = NUM2LONG(rb_hash_aref(blob_info, STR2SYM("header_pos"))) - 4;
   if (0 != fseek(input, pos, SEEK_SET)) {
-    return Qfalse; // failed to seek to file pos
+    rb_raise(rb_eIOError, "Unable to seek to file position");
   }
   
   // Set position - incremented by parse_osm_data
