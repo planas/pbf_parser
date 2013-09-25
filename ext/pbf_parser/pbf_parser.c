@@ -648,6 +648,16 @@ static VALUE seek_to_osm_data(VALUE obj, VALUE index)
   FILE *input = DATA_PTR(obj);
   VALUE blobs = blobs_getter(obj);
   int index_raw = NUM2INT(index);
+
+  // Normalise the index, otherwise #pos returns the wrong value
+  if (index_raw < 0) {
+    int size = NUM2INT(size_getter(obj));
+    // Only normalise if valid; otherwise, allow rb_ary_entry() to fail.
+    if (index_raw + size >= 0) {
+        index_raw += size;
+    }
+  }
+
   if (NUM2INT(rb_iv_get(obj, "@pos")) == index_raw) {
     return Qtrue; // already there
   }

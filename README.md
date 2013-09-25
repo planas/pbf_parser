@@ -120,7 +120,7 @@ Array index:
 > pbf.seek(-1)
 => true
 > pbf.pos
-=> 379 # FIXME: this currently returns -1!
+=> 379
 ```
 
 If the seek fails for any reason, it returns false (TODO: make this throw exception?):
