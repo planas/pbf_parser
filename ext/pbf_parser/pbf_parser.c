@@ -596,13 +596,14 @@ static VALUE parse_osm_data(VALUE obj)
   return Qtrue;
 }
 
+// Find position and size of all data blobs in the file
 static VALUE find_all_blobs(VALUE obj)
 {
   FILE *input = DATA_PTR(obj);
   long old_pos = ftell(input);
 
   if (0 != fseek(input, 0, SEEK_SET)) {
-    return Qfalse;
+    rb_raise(rb_eIOError, "Unable to seek to beginning of file");
   }
 
   BlobHeader *header;
@@ -647,10 +648,10 @@ static VALUE find_all_blobs(VALUE obj)
 
   // restore old position
   if (0 != fseek(input, old_pos, SEEK_SET)) {
-    return Qfalse;
+    rb_raise(rb_eIOError, "Unable to restore old file position");
   }
 
-  return Qtrue;
+  return blobs;
 }
 
 static VALUE header_getter(VALUE obj)
@@ -686,12 +687,16 @@ static VALUE relations_getter(VALUE obj)
 
 static VALUE blobs_getter(VALUE obj)
 {
-  return rb_iv_get(obj, "@blobs");
+  VALUE blobs = rb_iv_get(obj, "@blobs");
+  if (blobs == Qnil) {
+      blobs = find_all_blobs(obj);
+  }
+  return blobs;
 }
 
 static VALUE size_getter(VALUE obj)
 {
-  VALUE blobs = rb_iv_get(obj, "@blobs");
+  VALUE blobs = blobs_getter(obj);
   return rb_funcall(blobs, rb_intern("size"), 0);
 }
 
@@ -776,9 +781,6 @@ static VALUE initialize(VALUE obj, VALUE filename)
 
   // Parse the firts OSMData fileblock
   parse_osm_data(obj);
-
-  // Find position and size of all data blobs in the file
-  find_all_blobs(obj);
 
   return obj;
 }
