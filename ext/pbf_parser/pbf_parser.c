@@ -596,6 +596,63 @@ static VALUE parse_osm_data(VALUE obj)
   return Qtrue;
 }
 
+static VALUE find_all_blobs(VALUE obj)
+{
+  FILE *input = DATA_PTR(obj);
+  long old_pos = ftell(input);
+
+  if (0 != fseek(input, 0, SEEK_SET)) {
+    return Qfalse;
+  }
+
+  BlobHeader *header;
+
+  VALUE blobs = rb_ary_new();
+  rb_iv_set(obj, "@blobs", blobs);
+
+  long pos = 0, data_pos = 0;
+  int32_t datasize;
+
+  while ((header = read_blob_header(input)) != NULL) {
+
+    datasize = header->datasize;
+
+    if (0 == strcmp(header->type, "OSMData")) {
+      VALUE blob_info = rb_hash_new();
+      data_pos = ftell(input);
+
+      // This is designed to be user-friendly, so I have chosen
+      // to make header_pos the position of the protobuf stream
+      // itself, in line with data_pos. However, internally, we
+      // subtract 4 when calling parse_osm_data().
+      rb_hash_aset(blob_info, STR2SYM("header_pos"),
+		   LONG2NUM(pos + 4));
+      rb_hash_aset(blob_info, STR2SYM("header_size"),
+		   LONG2NUM(data_pos - pos - 4));
+      rb_hash_aset(blob_info, STR2SYM("data_pos"),
+		   LONG2NUM(data_pos));
+      rb_hash_aset(blob_info, STR2SYM("data_size"),
+		   UINT2NUM(datasize));
+
+      rb_ary_push(blobs, blob_info);
+    }
+
+    blob_header__free_unpacked(header, NULL);
+
+    if (0 != fseek(input, datasize, SEEK_CUR)) {
+      break; // cut losses
+    }
+    pos = ftell(input);
+  }
+
+  // restore old position
+  if (0 != fseek(input, old_pos, SEEK_SET)) {
+    return Qfalse;
+  }
+
+  return Qtrue;
+}
+
 static VALUE header_getter(VALUE obj)
 {
   return rb_iv_get(obj, "@header");
@@ -692,63 +749,6 @@ static VALUE iterate(VALUE obj)
   } while(RTEST(parse_osm_data(obj)));
 
   return Qnil;
-}
-
-static VALUE find_all_blobs(VALUE obj)
-{
-  FILE *input = DATA_PTR(obj);
-  long old_pos = ftell(input);
-
-  if (0 != fseek(input, 0, SEEK_SET)) {
-    return Qfalse;
-  }
-
-  BlobHeader *header;
-
-  VALUE blobs = rb_ary_new();
-  rb_iv_set(obj, "@blobs", blobs);
-
-  long pos = 0, data_pos = 0;
-  int32_t datasize;
-
-  while ((header = read_blob_header(input)) != NULL) {
-
-    datasize = header->datasize;
-
-    if (0 == strcmp(header->type, "OSMData")) {
-      VALUE blob_info = rb_hash_new();
-      data_pos = ftell(input);
-
-      // This is designed to be user-friendly, so I have chosen
-      // to make header_pos the position of the protobuf stream
-      // itself, in line with data_pos. However, internally, we
-      // subtract 4 when calling parse_osm_data().
-      rb_hash_aset(blob_info, STR2SYM("header_pos"),
-		   LONG2NUM(pos + 4));
-      rb_hash_aset(blob_info, STR2SYM("header_size"),
-		   LONG2NUM(data_pos - pos - 4));
-      rb_hash_aset(blob_info, STR2SYM("data_pos"),
-		   LONG2NUM(data_pos));
-      rb_hash_aset(blob_info, STR2SYM("data_size"),
-		   UINT2NUM(datasize));
-
-      rb_ary_push(blobs, blob_info);
-    }
-
-    blob_header__free_unpacked(header, NULL);
-
-    if (0 != fseek(input, datasize, SEEK_CUR)) {
-      break; // cut losses
-    }
-    pos = ftell(input);
-  }
-
-  // restore old position
-  if (0 != fseek(input, old_pos, SEEK_SET)) {
-    return Qfalse;
-  }
-
-  return Qtrue;
 }
 
 static VALUE initialize(VALUE obj, VALUE filename)
