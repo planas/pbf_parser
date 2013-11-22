@@ -1,9 +1,14 @@
 *.gem
 *.rbc
 *.osm.pbf
+*.o
+*.so
+*.log
 .bundle
 .config
 .yardoc
+.RUBYARCHDIR.time
+Makefile
 Gemfile.lock
 InstalledFiles
 _yardoc

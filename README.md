@@ -33,6 +33,8 @@ $ gem install pbf_parser
 
 ## Usage
 
+### Sequential access
+
 ```ruby
 > pbf = PbfParser.new("planet.osm.pbf")
 => #<PbfParser:0x008fa8d1080080>
@@ -84,11 +86,65 @@ pbf.each do |nodes, ways, relations|
   end
 end
 ```
+
+### Random access
+
+Instead of moving sequentially through the file, you can also use #seek to jump to a given OSMData block. First,
+use #size to show the number of OSMData blocks in the file:
+
+```ruby
+> pbf.size
+=> 380
+```
+
+You can then seek to block n (from 0 to 379, in this case) using #seek(n). Use #pos to show the current block
+(setting #pos has the same effect as calling #seek):
+
+```ruby
+> pbf.seek(25)
+=> true
+> pbf.pos
+=> 25
+> pbf.nodes.first[:id]
+=> 86079877
+> pbf.pos = 30
+=> 30
+> pbf.nodes.first[:id]
+=> 142424105
+```
+
+Using a negative number will count back from the end of the list of OSMData blocks, like when you use a negative
+Array index:
+
+```ruby
+> pbf.seek(-1)
+=> true
+> pbf.pos
+=> 379
+```
+
+If the index to #seek is out of bounds, it returns false:
+
+```ruby
+> pbf.seek(380)
+=> false
+```
+
+### Additional data
+
 The OSMHeader data is also parsed and stored:
 
 ```ruby
 > pbf.header
 => {"bbox"=>{:top=>43.75169, :right=>7.448637000000001, :bottom=>43.72335, :left=>7.409205}, "required_features"=>["OsmSchema-V0.6", "DenseNodes"], "optional_features"=>nil, "writing_program"=>"Osmium (http://wiki.openstreetmap.org/wiki/Osmium)", "source"=>nil, "osmosis_replication_timestamp"=>1375470002, "osmosis_replication_sequence_number"=>nil, "osmosis_replication_base_url"=>nil}
+```
+
+Also, you can examine the Array of entries describing the OSMData blobs found during the initial scan (mainly for
+debugging purposes). CAUTION: this data structure should not be modified.
+
+```ruby
+> pbf.blobs
+=> [{:header_pos=>142, :header_size=>13, :data_pos=>155, :data_size=>114068}, ...]
 ```
 
 Whenever something goes wrong an exception is raised so wrap your calls around rescue blocks at your convenience.
