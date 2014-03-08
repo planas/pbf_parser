@@ -4,11 +4,10 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |spec|
   spec.name          = "pbf_parser"
-  spec.version       = "0.0.6"
+  spec.version       = "0.1.0"
   spec.authors       = ["Adrià Planas"]
   spec.email         = ["adriaplanas@liquidcodeworks.com"]
-  spec.description   = %q{Parse Open Street Map PBF files with ease. Take a look at the readme on GitHub for installation instructions.}
-  spec.summary       = %q{Just an Open Street Map PBF parser.}
+  spec.summary       = %q{Parse Open Street Map PBF files with ease}
   spec.homepage      = "https://github.com/planas/pbf_parser"
   spec.license       = "MIT"
 
