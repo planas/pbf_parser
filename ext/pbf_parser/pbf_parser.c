@@ -33,11 +33,11 @@ static char *parse_binary_str(ProtobufCBinaryData bstr)
   return str;
 }
 
-static BlobHeader *read_blob_header(FILE *input)
+static OSMPBF__BlobHeader *read_blob_header(FILE *input)
 {
   void *buffer;
   size_t length = get_header_size(input);
-  BlobHeader *header = NULL;
+  OSMPBF__BlobHeader *header = NULL;
 
   if(length < 1 || length > MAX_BLOB_HEADER_SIZE)
   {
@@ -56,7 +56,7 @@ static BlobHeader *read_blob_header(FILE *input)
     rb_raise(rb_eIOError, "Unable to read the blob header");
   }
 
-  header = blob_header__unpack(NULL, length, buffer);
+  header = osmpbf__blob_header__unpack(NULL, length, buffer);
 
   free(buffer);
 
@@ -70,7 +70,7 @@ static void *read_blob(FILE *input, size_t length, size_t *raw_length)
 {
   VALUE exc = Qnil;
   void *buffer = NULL;
-  Blob *blob = NULL;
+  OSMPBF__Blob *blob = NULL;
 
   if(length < 1 || length > MAX_BLOB_SIZE)
     rb_raise(rb_eIOError, "Invalid blob size");
@@ -79,7 +79,7 @@ static void *read_blob(FILE *input, size_t length, size_t *raw_length)
     rb_raise(rb_eNoMemError, "Unable to allocate memory for the blob");
 
   if(fread(buffer, length, 1, input))
-    blob = blob__unpack(NULL, length, buffer);
+    blob = osmpbf__blob__unpack(NULL, length, buffer);
 
   free(buffer);
 
@@ -150,7 +150,7 @@ static void *read_blob(FILE *input, size_t length, size_t *raw_length)
   }
 
   exit_nicely:
-    if(blob) blob__free_unpacked(blob, NULL);
+    if(blob) osmpbf__blob__free_unpacked(blob, NULL);
     if(!data) free(data);
     if(exc != Qnil) rb_exc_raise(exc);
 
@@ -168,7 +168,7 @@ static VALUE init_data_arr()
   return data;
 }
 
-static void add_info(VALUE hash, Info *info, StringTable *string_table, double ts_granularity)
+static void add_info(VALUE hash, OSMPBF__Info *info, OSMPBF__StringTable *string_table, double ts_granularity)
 {
   VALUE version, timestamp, changeset, uid, user;
 
@@ -195,7 +195,7 @@ static void add_info(VALUE hash, Info *info, StringTable *string_table, double t
 
 static int parse_osm_header(VALUE obj, FILE *input)
 {
-  BlobHeader *header = read_blob_header(input);
+  OSMPBF__BlobHeader *header = read_blob_header(input);
 
   // EOF reached
   if(header == NULL)
@@ -206,12 +206,12 @@ static int parse_osm_header(VALUE obj, FILE *input)
 
   void *blob = NULL;
   size_t blob_length = 0, datasize = header->datasize;
-  HeaderBlock *header_block = NULL;
+  OSMPBF__HeaderBlock *header_block = NULL;
 
-  blob_header__free_unpacked(header, NULL);
+  osmpbf__blob_header__free_unpacked(header, NULL);
 
   blob = read_blob(input, datasize, &blob_length);
-  header_block = header_block__unpack(NULL, blob_length, blob);
+  header_block = osmpbf__header_block__unpack(NULL, blob_length, blob);
 
   free(blob);
 
@@ -282,12 +282,12 @@ static int parse_osm_header(VALUE obj, FILE *input)
 
   rb_iv_set(obj, "@header", header_hash);
 
-  header_block__free_unpacked(header_block, NULL);
+  osmpbf__header_block__free_unpacked(header_block, NULL);
 
   return 1;
 }
 
-static void process_nodes(VALUE out, PrimitiveGroup *group, StringTable *string_table, int64_t lat_offset, int64_t lon_offset, int64_t granularity, int32_t ts_granularity)
+static void process_nodes(VALUE out, OSMPBF__PrimitiveGroup *group, OSMPBF__StringTable *string_table, int64_t lat_offset, int64_t lon_offset, int64_t granularity, int32_t ts_granularity)
 {
   double lat = 0;
   double lon = 0;
@@ -296,7 +296,7 @@ static void process_nodes(VALUE out, PrimitiveGroup *group, StringTable *string_
 
   for(i = 0; i < group->n_nodes; i++)
   {
-    Node *node = group->nodes[i];
+    OSMPBF__Node *node = group->nodes[i];
     VALUE node_out = rb_hash_new();
 
     lat = NANO_DEGREE * (lat_offset + (node->lat * granularity));
@@ -327,7 +327,7 @@ static void process_nodes(VALUE out, PrimitiveGroup *group, StringTable *string_
   }
 }
 
-static void process_dense_nodes(VALUE out, DenseNodes *dense_nodes, StringTable *string_table, int64_t lat_offset, int64_t lon_offset, int64_t granularity, int32_t ts_granularity)
+static void process_dense_nodes(VALUE out, OSMPBF__DenseNodes *dense_nodes, OSMPBF__StringTable *string_table, int64_t lat_offset, int64_t lon_offset, int64_t granularity, int32_t ts_granularity)
 {
   uint64_t node_id = 0;
   int64_t delta_lat = 0;
@@ -366,7 +366,7 @@ static void process_dense_nodes(VALUE out, DenseNodes *dense_nodes, StringTable 
       delta_user_sid  += dense_nodes->denseinfo->user_sid[i];
       delta_uid       += dense_nodes->denseinfo->uid[i];
 
-      Info info = {
+      OSMPBF__Info info = {
         .version   = dense_nodes->denseinfo->version[i],
         .timestamp = delta_timestamp,
         .changeset = delta_changeset,
@@ -402,14 +402,14 @@ static void process_dense_nodes(VALUE out, DenseNodes *dense_nodes, StringTable 
   }
 }
 
-static void process_ways(VALUE out, PrimitiveGroup *group, StringTable *string_table, int32_t ts_granularity)
+static void process_ways(VALUE out, OSMPBF__PrimitiveGroup *group, OSMPBF__StringTable *string_table, int32_t ts_granularity)
 {
   unsigned j, k;
   size_t i = 0;
 
   for(i = 0; i < group->n_ways; i++)
   {
-    Way *way = group->ways[i];
+    OSMPBF__Way *way = group->ways[i];
     int64_t delta_refs = 0;
 
     VALUE way_out = rb_hash_new();
@@ -449,14 +449,14 @@ static void process_ways(VALUE out, PrimitiveGroup *group, StringTable *string_t
   }
 }
 
-static void process_relations(VALUE out, PrimitiveGroup *group, StringTable *string_table, int32_t ts_granularity)
+static void process_relations(VALUE out, OSMPBF__PrimitiveGroup *group, OSMPBF__StringTable *string_table, int32_t ts_granularity)
 {
   unsigned j, k;
   size_t i = 0;
 
   for(i = 0; i < group->n_relations; i++)
   {
-    Relation *relation = group->relations[i];
+    OSMPBF__Relation *relation = group->relations[i];
     VALUE relation_out = rb_hash_new();
 
     rb_hash_aset(relation_out, STR2SYM("id"), LL2NUM(relation->id));
@@ -501,13 +501,13 @@ static void process_relations(VALUE out, PrimitiveGroup *group, StringTable *str
 
       switch(relation->types[k])
       {
-        case RELATION__MEMBER_TYPE__NODE:
+        case OSMPBF__RELATION__MEMBER_TYPE__NODE:
           rb_ary_push(nodes, member);
           break;
-        case RELATION__MEMBER_TYPE__WAY:
+        case OSMPBF__RELATION__MEMBER_TYPE__WAY:
           rb_ary_push(ways, member);
           break;
-        case RELATION__MEMBER_TYPE__RELATION:
+        case OSMPBF__RELATION__MEMBER_TYPE__RELATION:
           rb_ary_push(relations, member);
           break;
       }
@@ -530,7 +530,7 @@ static void process_relations(VALUE out, PrimitiveGroup *group, StringTable *str
 static VALUE parse_osm_data(VALUE obj)
 {
   FILE *input = DATA_PTR(obj);
-  BlobHeader *header = read_blob_header(input);
+  OSMPBF__BlobHeader *header = read_blob_header(input);
 
   if(header == NULL)
     return Qfalse;
@@ -540,12 +540,12 @@ static VALUE parse_osm_data(VALUE obj)
 
   void *blob = NULL;
   size_t blob_length = 0, datasize = header->datasize;
-  PrimitiveBlock *primitive_block = NULL;
+  OSMPBF__PrimitiveBlock *primitive_block = NULL;
 
   blob_header__free_unpacked(header, NULL);
 
   blob = read_blob(input, datasize, &blob_length);
-  primitive_block = primitive_block__unpack(NULL, blob_length, blob);
+  primitive_block = osmpbf__primitive_block__unpack(NULL, blob_length, blob);
 
   free(blob);
 
@@ -560,7 +560,7 @@ static VALUE parse_osm_data(VALUE obj)
   granularity    = primitive_block->granularity;
   ts_granularity = primitive_block->date_granularity;
 
-  StringTable *string_table = primitive_block->stringtable;
+  OSMPBF__StringTable *string_table = primitive_block->stringtable;
 
   VALUE data      = init_data_arr();
   VALUE nodes     = rb_hash_aref(data, STR2SYM("nodes"));
@@ -571,7 +571,7 @@ static VALUE parse_osm_data(VALUE obj)
 
   for(i = 0; i < primitive_block->n_primitivegroup; i++)
   {
-    PrimitiveGroup *primitive_group = primitive_block->primitivegroup[i];
+    OSMPBF__PrimitiveGroup *primitive_group = primitive_block->primitivegroup[i];
 
     if(primitive_group->nodes)
       process_nodes(nodes, primitive_group, string_table, lat_offset, lon_offset, granularity, ts_granularity);
@@ -606,7 +606,7 @@ static VALUE find_all_blobs(VALUE obj)
     rb_raise(rb_eIOError, "Unable to seek to beginning of file");
   }
 
-  BlobHeader *header;
+  OSMPBF__BlobHeader *header;
 
   VALUE blobs = rb_ary_new();
   rb_iv_set(obj, "@blobs", blobs);
@@ -731,7 +731,7 @@ static VALUE seek_to_osm_data(VALUE obj, VALUE index)
   if (0 != fseek(input, pos, SEEK_SET)) {
     rb_raise(rb_eIOError, "Unable to seek to file position");
   }
-  
+
   // Set position - incremented by parse_osm_data
   rb_iv_set(obj, "@pos", INT2NUM(index_raw - 1));
 

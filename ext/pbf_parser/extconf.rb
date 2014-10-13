@@ -17,10 +17,10 @@ LIB_DIRS = [
   LIBDIR
 ]
 
-dir_config('protobuf-c', HEADER_DIRS, LIB_DIRS)
+dir_config('libprotobuf-c', HEADER_DIRS, LIB_DIRS)
 dir_config('zlib', HEADER_DIRS, LIB_DIRS)
 
-abort "protobuf-c is required" unless find_header('google/protobuf-c/protobuf-c.h')
+abort "protobuf-c is required" unless find_header('protobuf-c/protobuf-c.h')
 abort "zlib is required"       unless find_header('zlib.h')
 
 abort "protobuf-c is required" unless find_library('protobuf-c', 'protobuf_c_message_unpack')
