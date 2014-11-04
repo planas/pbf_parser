@@ -542,7 +542,7 @@ static VALUE parse_osm_data(VALUE obj)
   size_t blob_length = 0, datasize = header->datasize;
   OSMPBF__PrimitiveBlock *primitive_block = NULL;
 
-  blob_header__free_unpacked(header, NULL);
+  osmpbf__blob_header__free_unpacked(header, NULL);
 
   blob = read_blob(input, datasize, &blob_length);
   primitive_block = osmpbf__primitive_block__unpack(NULL, blob_length, blob);
@@ -588,7 +588,7 @@ static VALUE parse_osm_data(VALUE obj)
 
   rb_iv_set(obj, "@data", data);
 
-  primitive_block__free_unpacked(primitive_block, NULL);
+  osmpbf__primitive_block__free_unpacked(primitive_block, NULL);
 
   // Increment position
   rb_iv_set(obj, "@pos", INT2NUM(NUM2INT(rb_iv_get(obj, "@pos")) + 1));
@@ -638,7 +638,7 @@ static VALUE find_all_blobs(VALUE obj)
       rb_ary_push(blobs, blob_info);
     }
 
-    blob_header__free_unpacked(header, NULL);
+    osmpbf__blob_header__free_unpacked(header, NULL);
 
     if (0 != fseek(input, datasize, SEEK_CUR)) {
       break; // cut losses
