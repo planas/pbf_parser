@@ -2,6 +2,8 @@
 
 As its name suggests is a gem to parse [Open Street Map](http://www.openstreetmap.org/) [PBF](http://wiki.openstreetmap.org/wiki/Pbf) files with ease.
 
+**NOTE: Since v0.2.0 protobuf 2.6+ is required.**
+
 ## Installation
 
 You need protobuf-c and zlib. On OS X you can use Homebrew to install them easily.
