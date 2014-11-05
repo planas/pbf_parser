@@ -2,9 +2,11 @@
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
+require 'pbf_parser/version'
+
 Gem::Specification.new do |spec|
   spec.name          = "pbf_parser"
-  spec.version       = "0.1.0"
+  spec.version       = PbfParser::VERSION
   spec.authors       = ["Adrià Planas"]
   spec.email         = ["adriaplanas@liquidcodeworks.com"]
   spec.summary       = %q{Parse Open Street Map PBF files with ease}
