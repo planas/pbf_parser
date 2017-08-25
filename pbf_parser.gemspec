@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.name          = "pbf_parser"
   spec.version       = PbfParser::VERSION
   spec.authors       = ["Adrià Planas"]
-  spec.email         = ["adriaplanas@liquidcodeworks.com"]
+  spec.email         = ["adriaplanas@edgecodeworks.com"]
   spec.summary       = %q{Parse Open Street Map PBF files with ease}
   spec.homepage      = "https://github.com/planas/pbf_parser"
   spec.license       = "MIT"
