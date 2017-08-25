@@ -761,10 +761,6 @@ static VALUE initialize(VALUE obj, VALUE filename)
   // Check that filename is a string
   Check_Type(filename, T_STRING);
 
-  // Check if the file has a valid extension
-  if(!strcmp(".osm.pbf", StringValuePtr(filename) + RSTRING_LEN(filename)-8) == 0)
-    rb_raise(rb_eArgError, "Not a osm.pbf file");
-
   // Try to open the given file
   if(!(DATA_PTR(obj) = fopen(StringValuePtr(filename), "rb")))
     rb_raise(rb_eIOError, "Unable to open the file");
