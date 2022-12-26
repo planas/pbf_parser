@@ -7,6 +7,7 @@ HEADER_DIRS = [
   '/opt/local/include',
   '/usr/local/include',
   '/usr/include',
+  '/opt/homebrew/include',
   INCLUDEDIR
 ]
 
@@ -14,6 +15,7 @@ LIB_DIRS = [
   '/opt/local/lib',
   '/usr/local/lib',
   '/usr/lib',
+  '/opt/homebrew/include',
   LIBDIR
 ]
 
